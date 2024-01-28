@@ -37,7 +37,7 @@ data:
 # Development credentials for the SSO authentication roundtrip
 auth:
   oidc:
-    domain: "http://0.0.0.0:5556/dex"
+    domain: "http://0.0.0.0:8080/realms/chainloop"
     redirect_url_scheme: "http"
     client_id: "chainloop-dev"
     client_secret: "ZXhhbXBsZS1hcHAtc2VjcmV0"

@@ -39,5 +39,61 @@ services:
     ports:
       - "0.0.0.0:5556:5556/tcp"
 
+  keycloak-db:
+    image: docker.io/bitnami/postgresql:14
+    volumes:
+      - postgresql_data:/bitnami/postgresql
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      retries: 10
+
+  keycloak:
+    build: ./keycloak
+    ports:
+      - "0.0.0.0:8080:8080/tcp"
+    command:
+    - start-dev
+    - --db=postgres
+    - --db-url=jdbc:postgresql://keycloak-db:5432/postgres
+    - --db-username=postgres
+    - --db-password=""
+    depends_on:
+      - keycloak-db
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    healthcheck:
+      test:
+        - CMD
+        - /opt/keycloak/bin/kcadm.sh
+        - config
+        - credentials
+        - --server=http://keycloak:8080
+        - --realm=master
+        - --user=admin
+        - --password=admin
+      interval: 2s
+      retries: 60
+
+  keycloak-config:
+    image: hashicorp/terraform:1.7.0
+    volumes:
+      - ./keycloak/tf:/keycloak-tf
+    working_dir: /tf
+    depends_on:
+      - keycloak
+    restart: on-failure
+    entrypoint:
+       - sh
+       - -c
+       - |
+         set -eu
+         cp -r /keycloak-tf/* /tf
+         terraform init -backend-config="conn_str=postgres://postgres@keycloak-db:5432/postgres?sslmode=disable"
+         terraform apply --auto-approve
+
 volumes:
   postgresql_data:
